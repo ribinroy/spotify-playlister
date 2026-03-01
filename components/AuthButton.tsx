@@ -2,13 +2,16 @@
 
 interface AuthButtonProps {
   isLoggedIn: boolean;
+  userName?: string | null;
 }
 
-export default function AuthButton({ isLoggedIn }: AuthButtonProps) {
+export default function AuthButton({ isLoggedIn, userName }: AuthButtonProps) {
   if (isLoggedIn) {
     return (
       <div className="flex items-center gap-3">
-        <span className="text-sm text-green-400">Connected to Spotify</span>
+        <span className="text-sm text-green-400">
+          {userName ? userName : "Connected to Spotify"}
+        </span>
         <button
           onClick={async () => {
             await fetch("/api/auth/logout", { method: "POST" });

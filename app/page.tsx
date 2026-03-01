@@ -18,6 +18,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState<AppStep>("auth");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userName, setUserName] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState("");
 
   const [, setScannedFiles] = useState<ScannedFile[]>([]);
@@ -45,11 +46,16 @@ export default function Home() {
       .then(async (data) => {
         if (data.authenticated) {
           setIsLoggedIn(true);
+          setUserName(data.user?.name || null);
           setStep("select");
           setAccessToken("cookie-based");
         } else if (data.canRefresh) {
           const res = await fetch("/api/auth/refresh", { method: "POST" });
           if (res.ok) {
+            // Re-check status to get user info
+            const statusRes = await fetch("/api/auth/status");
+            const statusData = await statusRes.json();
+            setUserName(statusData.user?.name || null);
             setIsLoggedIn(true);
             setStep("select");
             setAccessToken("cookie-based");
@@ -156,7 +162,7 @@ export default function Home() {
             Map your local music folders to Spotify playlists
           </p>
         </div>
-        <AuthButton isLoggedIn={isLoggedIn} />
+        <AuthButton isLoggedIn={isLoggedIn} userName={userName} />
       </header>
 
       {/* Step: Not logged in */}
