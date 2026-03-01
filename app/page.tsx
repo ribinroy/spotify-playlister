@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import toast, { Toaster } from "react-hot-toast";
 import AuthButton from "@/components/AuthButton";
 import FolderPicker from "@/components/FolderPicker";
 import MappingTable from "@/components/MappingTable";
@@ -27,8 +28,18 @@ export default function Home() {
   const [progress, setProgress] = useState({ label: "", current: 0, total: 0 });
   const [editingMatch, setEditingMatch] = useState<MatchResult | null>(null);
 
-  // Check auth on mount
+  // Check auth on mount + URL error params
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get("error");
+    if (error === "token_exchange_failed") {
+      toast.error( "Spotify login failed — could not exchange token. Please try again.");
+      window.history.replaceState({}, "", "/");
+    } else if (error === "auth_failed") {
+      toast.error( "Spotify authorization was denied or failed.");
+      window.history.replaceState({}, "", "/");
+    }
+
     fetch("/api/auth/status")
       .then((res) => res.json())
       .then(async (data) => {
@@ -42,28 +53,44 @@ export default function Home() {
             setIsLoggedIn(true);
             setStep("select");
             setAccessToken("cookie-based");
+          } else {
+            toast.error( "Session expired. Please log in again.");
           }
         }
       })
-      .catch(() => {})
+      .catch(() => {
+        toast.error( "Could not check authentication status.");
+      })
       .finally(() => setLoading(false));
   }, []);
 
   const handleFilesScanned = useCallback(async (files: ScannedFile[]) => {
     setScannedFiles(files);
-    setStep("extracting");
 
-    const entries = await extractAllMetadata(files, (current, total) => {
-      setProgress({ label: "Extracting metadata", current, total });
-    });
-    setTracks(entries);
-    setStep("matching");
+    try {
+      setStep("extracting");
+      const entries = await extractAllMetadata(files, (current, total) => {
+        setProgress({ label: "Extracting metadata", current, total });
+      });
+      setTracks(entries);
 
-    const results = await searchAllTracks(entries, accessToken, (current, total) => {
-      setProgress({ label: "Matching tracks", current, total });
-    });
-    setMatches(results);
-    setStep("review");
+      if (entries.length === 0) {
+        toast( "No audio files with metadata found in this folder.");
+        setStep("select");
+        return;
+      }
+
+      setStep("matching");
+      const results = await searchAllTracks(entries, accessToken, (current, total) => {
+        setProgress({ label: "Matching tracks", current, total });
+      });
+      setMatches(results);
+      setStep("review");
+    } catch (err) {
+      console.error("Scan/match error:", err);
+      toast.error( `Failed during processing: ${err instanceof Error ? err.message : "Unknown error"}`);
+      setStep("select");
+    }
   }, [accessToken]);
 
   const handleEditSelect = useCallback(
@@ -85,27 +112,43 @@ export default function Home() {
       (m) => m.confidence === "green" || (m.confidence === "yellow" && m.spotifyTrack)
     );
 
-    setStep("creating");
-    const playlists = await buildPlaylists(approved, accessToken, (status, current, total) => {
-      setProgress({ label: status, current, total });
-    });
-    setCreatedPlaylists(playlists);
-    setStep("done");
+    if (approved.length === 0) {
+      toast( "No matched tracks to create playlists from.");
+      return;
+    }
+
+    try {
+      setStep("creating");
+      const playlists = await buildPlaylists(approved, accessToken, (status, current, total) => {
+        setProgress({ label: status, current, total });
+      });
+      setCreatedPlaylists(playlists);
+      setStep("done");
+      toast.success( `Created ${playlists.length} playlists on Spotify!`);
+    } catch (err) {
+      console.error("Playlist creation error:", err);
+      toast.error( `Failed to create playlists: ${err instanceof Error ? err.message : "Unknown error"}`);
+      setStep("review");
+    }
   }, [matches, accessToken]);
 
   if (loading) {
     return (
-      <main className="flex items-center justify-center min-h-screen">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-4 border-zinc-700 border-t-green-500 rounded-full animate-spin" />
-          <p className="text-zinc-400 text-sm">Loading Spotifolder...</p>
-        </div>
-      </main>
+      <>
+        <Toaster position="top-right" toastOptions={{ style: { background: "#18181b", color: "#fff", border: "1px solid #27272a" } }} />
+        <main className="flex items-center justify-center min-h-screen">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-10 h-10 border-4 border-zinc-700 border-t-green-500 rounded-full animate-spin" />
+            <p className="text-zinc-400 text-sm">Loading Spotifolder...</p>
+          </div>
+        </main>
+      </>
     );
   }
 
   return (
     <main className="max-w-5xl mx-auto px-4 py-12">
+      <Toaster position="top-right" toastOptions={{ style: { background: "#18181b", color: "#fff", border: "1px solid #27272a" } }} />
       <header className="flex items-center justify-between mb-12">
         <div>
           <h1 className="text-3xl font-bold">Spotifolder</h1>
