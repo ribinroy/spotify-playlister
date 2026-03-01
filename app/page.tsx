@@ -34,6 +34,9 @@ export default function Home() {
           setIsLoggedIn(true);
           setStep("select");
           setAccessToken("cookie-based");
+        } else {
+          // Clear stale cookies so re-login works cleanly
+          fetch("/api/auth/logout", { method: "POST" });
         }
       })
       .catch(() => {});

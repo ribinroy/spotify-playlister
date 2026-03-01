@@ -8,7 +8,14 @@ export async function GET(request: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
   if (error || !code) {
-    return NextResponse.redirect(`${appUrl}?error=auth_failed`);
+    return NextResponse.redirect(`${appUrl}?error=auth_failed`, { status: 302 });
+  }
+
+  // If we already have a valid access token cookie, skip the exchange
+  // (handles the browser double-firing the callback)
+  const existingToken = request.cookies.get("spotify_access_token")?.value;
+  if (existingToken) {
+    return NextResponse.redirect(appUrl, { status: 302 });
   }
 
   try {
@@ -16,11 +23,10 @@ export async function GET(request: NextRequest) {
 
     if (tokens.error) {
       console.error("Token exchange error:", tokens.error, tokens.error_description);
-      return NextResponse.redirect(`${appUrl}?error=token_exchange_failed`);
+      return NextResponse.redirect(`${appUrl}?error=token_exchange_failed`, { status: 302 });
     }
 
-    // Store tokens in a cookie (httpOnly for security)
-    const response = NextResponse.redirect(appUrl);
+    const response = NextResponse.redirect(appUrl, { status: 302 });
 
     response.cookies.set("spotify_access_token", tokens.access_token, {
       httpOnly: true,
@@ -40,6 +46,6 @@ export async function GET(request: NextRequest) {
 
     return response;
   } catch {
-    return NextResponse.redirect(`${appUrl}?error=server_error`);
+    return NextResponse.redirect(`${appUrl}?error=server_error`, { status: 302 });
   }
 }
