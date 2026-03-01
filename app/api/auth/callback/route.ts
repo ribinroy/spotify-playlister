@@ -23,6 +23,11 @@ export async function GET(request: NextRequest) {
 
     if (tokens.error) {
       console.error("Token exchange error:", tokens.error, tokens.error_description);
+      // If we have a refresh token, the first callback likely succeeded — just redirect home
+      const existingRefresh = request.cookies.get("spotify_refresh_token")?.value;
+      if (existingRefresh) {
+        return NextResponse.redirect(appUrl, { status: 302 });
+      }
       return NextResponse.redirect(`${appUrl}?error=token_exchange_failed`, { status: 302 });
     }
 
