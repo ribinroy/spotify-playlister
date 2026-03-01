@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     const tokens = await exchangeCodeForTokens(code);
 
     if (tokens.error) {
+      console.error("Token exchange error:", tokens.error, tokens.error_description);
       return NextResponse.redirect(`${appUrl}?error=token_exchange_failed`);
     }
 

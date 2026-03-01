@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { refreshAccessToken } from "@/lib/spotify/auth";
 
 const SPOTIFY_API_BASE = "https://api.spotify.com/v1";
 
@@ -10,8 +11,32 @@ export async function POST(request: NextRequest) {
   return proxyRequest(request);
 }
 
+async function spotifyCall(endpoint: string, token: string, method: string, body?: string) {
+  const fetchOptions: RequestInit = {
+    method,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  };
+  if (method === "POST" && body) fetchOptions.body = body;
+  return fetch(`${SPOTIFY_API_BASE}${endpoint}`, fetchOptions);
+}
+
+async function parseResponse(response: Response) {
+  const text = await response.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    console.error("Spotify non-JSON response:", response.status, text);
+    return null;
+  }
+}
+
 async function proxyRequest(request: NextRequest) {
-  const accessToken = request.cookies.get("spotify_access_token")?.value;
+  let accessToken = request.cookies.get("spotify_access_token")?.value;
+  const refreshToken = request.cookies.get("spotify_refresh_token")?.value;
 
   if (!accessToken) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
@@ -23,26 +48,55 @@ async function proxyRequest(request: NextRequest) {
   }
 
   try {
-    const headers: HeadersInit = {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    };
-
-    const fetchOptions: RequestInit = {
-      method: request.method,
-      headers,
-    };
-
+    let body: string | undefined;
     if (request.method === "POST") {
-      const body = await request.text();
-      if (body) fetchOptions.body = body;
+      body = await request.text();
     }
 
-    const response = await fetch(`${SPOTIFY_API_BASE}${endpoint}`, fetchOptions);
-    const data = await response.json();
+    let response = await spotifyCall(endpoint, accessToken, request.method, body);
+
+    // If token expired, try refreshing
+    if (response.status === 401 && refreshToken) {
+      const tokens = await refreshAccessToken(refreshToken);
+      if (tokens.access_token) {
+        accessToken = tokens.access_token;
+        response = await spotifyCall(endpoint, accessToken, request.method, body);
+
+        // Return data with updated cookies
+        const data = await parseResponse(response);
+        if (data === null) {
+          return NextResponse.json({ error: "Invalid Spotify response" }, { status: response.status });
+        }
+
+        const res = NextResponse.json(data, { status: response.status });
+        res.cookies.set("spotify_access_token", accessToken, {
+          httpOnly: true,
+          secure: true,
+          sameSite: "lax",
+          maxAge: tokens.expires_in,
+          path: "/",
+        });
+        if (tokens.refresh_token) {
+          res.cookies.set("spotify_refresh_token", tokens.refresh_token, {
+            httpOnly: true,
+            secure: true,
+            sameSite: "lax",
+            maxAge: 60 * 60 * 24 * 30,
+            path: "/",
+          });
+        }
+        return res;
+      }
+    }
+
+    const data = await parseResponse(response);
+    if (data === null) {
+      return NextResponse.json({ error: "Invalid Spotify response" }, { status: response.status });
+    }
 
     return NextResponse.json(data, { status: response.status });
-  } catch {
+  } catch (err) {
+    console.error("Proxy error:", err);
     return NextResponse.json({ error: "Proxy error" }, { status: 500 });
   }
 }
