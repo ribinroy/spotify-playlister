@@ -10,11 +10,8 @@ export default function AuthButton({ isLoggedIn }: AuthButtonProps) {
       <div className="flex items-center gap-3">
         <span className="text-sm text-green-400">Connected to Spotify</span>
         <button
-          onClick={() => {
-            document.cookie =
-              "spotify_access_token=; Max-Age=0; path=/";
-            document.cookie =
-              "spotify_refresh_token=; Max-Age=0; path=/";
+          onClick={async () => {
+            await fetch("/api/auth/logout", { method: "POST" });
             window.location.reload();
           }}
           className="px-4 py-2 text-sm rounded-full bg-zinc-800 text-white hover:bg-zinc-700 transition"
