@@ -254,6 +254,18 @@ export default function Home() {
           onClose={() => setEditingMatch(null)}
         />
       )}
+
+      <footer className="mt-20 py-6 border-t border-zinc-800 text-center text-sm text-zinc-500">
+        Built by{" "}
+        <a
+          href="https://ribinroy.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-zinc-300 hover:text-white transition"
+        >
+          Ribin Roy
+        </a>
+      </footer>
     </main>
   );
 }
