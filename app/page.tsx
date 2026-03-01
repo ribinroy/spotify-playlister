@@ -97,11 +97,60 @@ export default function Home() {
 
       {/* Step: Not logged in */}
       {step === "auth" && (
-        <div className="text-center py-20">
-          <p className="text-zinc-400 mb-6">
-            Connect your Spotify account to get started.
-          </p>
-          <AuthButton isLoggedIn={false} />
+        <div className="py-12 space-y-16">
+          {/* Hero / What is this */}
+          <section className="text-center space-y-4">
+            <h2 className="text-2xl font-semibold">Your local music, now on Spotify</h2>
+            <p className="text-zinc-400 max-w-2xl mx-auto leading-relaxed">
+              Spotifolder reads the folder structure and metadata (ID3 tags) from your local
+              music library, matches each track against the Spotify catalog, and creates
+              playlists that mirror your folder layout — all without uploading a single file.
+            </p>
+            <div className="pt-4">
+              <AuthButton isLoggedIn={false} />
+            </div>
+          </section>
+
+          {/* How it works */}
+          <section className="space-y-6">
+            <h3 className="text-lg font-semibold text-center">How it works</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-3xl mx-auto">
+              <div className="p-5 rounded-xl bg-zinc-900 border border-zinc-800 space-y-2">
+                <div className="text-2xl">1</div>
+                <h4 className="font-medium">Select a folder</h4>
+                <p className="text-sm text-zinc-400">
+                  Pick a music folder from your computer. The app scans for
+                  .mp3, .wav, and .flac files and reads their metadata locally — nothing gets uploaded.
+                </p>
+              </div>
+              <div className="p-5 rounded-xl bg-zinc-900 border border-zinc-800 space-y-2">
+                <div className="text-2xl">2</div>
+                <h4 className="font-medium">Review matches</h4>
+                <p className="text-sm text-zinc-400">
+                  Each track is searched on Spotify and scored with a traffic-light system:
+                  green for confident matches, yellow for review, red for no match. You can
+                  manually search and override any result.
+                </p>
+              </div>
+              <div className="p-5 rounded-xl bg-zinc-900 border border-zinc-800 space-y-2">
+                <div className="text-2xl">3</div>
+                <h4 className="font-medium">Create playlists</h4>
+                <p className="text-sm text-zinc-400">
+                  Hit &quot;Create Library&quot; and Spotifolder builds one Spotify playlist per
+                  folder, using a flattened naming scheme
+                  (e.g. <span className="text-zinc-300">Electronic - Techno</span>).
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Requirements note */}
+          <section className="text-center">
+            <p className="text-xs text-zinc-600">
+              Requires Chrome, Edge, or Opera (File System Access API).
+              Your files never leave your computer — only metadata is read.
+            </p>
+          </section>
         </div>
       )}
 
