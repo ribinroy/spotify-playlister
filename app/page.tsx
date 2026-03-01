@@ -28,15 +28,23 @@ export default function Home() {
 
   // Check auth on mount
   useEffect(() => {
-    fetch("/api/spotify/proxy?endpoint=/me")
-      .then((res) => {
-        if (res.ok) {
+    fetch("/api/auth/status")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.authenticated) {
           setIsLoggedIn(true);
           setStep("select");
           setAccessToken("cookie-based");
-        } else {
-          // Clear stale cookies so re-login works cleanly
-          fetch("/api/auth/logout", { method: "POST" });
+        } else if (data.canRefresh) {
+          // Try refreshing the token
+          fetch("/api/auth/refresh", { method: "POST" })
+            .then((res) => {
+              if (res.ok) {
+                setIsLoggedIn(true);
+                setStep("select");
+                setAccessToken("cookie-based");
+              }
+            });
         }
       })
       .catch(() => {});
