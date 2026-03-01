@@ -14,6 +14,7 @@ import type { ScannedFile, TrackEntry, MatchResult, SpotifyTrack, CreatedPlaylis
 type AppStep = "auth" | "select" | "extracting" | "matching" | "review" | "creating" | "done";
 
 export default function Home() {
+  const [loading, setLoading] = useState(true);
   const [step, setStep] = useState<AppStep>("auth");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [accessToken, setAccessToken] = useState("");
@@ -30,24 +31,22 @@ export default function Home() {
   useEffect(() => {
     fetch("/api/auth/status")
       .then((res) => res.json())
-      .then((data) => {
+      .then(async (data) => {
         if (data.authenticated) {
           setIsLoggedIn(true);
           setStep("select");
           setAccessToken("cookie-based");
         } else if (data.canRefresh) {
-          // Try refreshing the token
-          fetch("/api/auth/refresh", { method: "POST" })
-            .then((res) => {
-              if (res.ok) {
-                setIsLoggedIn(true);
-                setStep("select");
-                setAccessToken("cookie-based");
-              }
-            });
+          const res = await fetch("/api/auth/refresh", { method: "POST" });
+          if (res.ok) {
+            setIsLoggedIn(true);
+            setStep("select");
+            setAccessToken("cookie-based");
+          }
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   const handleFilesScanned = useCallback(async (files: ScannedFile[]) => {
@@ -93,6 +92,17 @@ export default function Home() {
     setCreatedPlaylists(playlists);
     setStep("done");
   }, [matches, accessToken]);
+
+  if (loading) {
+    return (
+      <main className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-4 border-zinc-700 border-t-green-500 rounded-full animate-spin" />
+          <p className="text-zinc-400 text-sm">Loading Spotifolder...</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="max-w-5xl mx-auto px-4 py-12">
