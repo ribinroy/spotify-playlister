@@ -35,8 +35,8 @@ async function parseResponse(response: Response) {
 }
 
 async function proxyRequest(request: NextRequest) {
-  let accessToken = request.cookies.get("spotify_access_token")?.value;
-  const refreshToken = request.cookies.get("spotify_refresh_token")?.value;
+  let accessToken: string | null = request.cookies.get("spotify_access_token")?.value ?? null;
+  const refreshToken = request.cookies.get("spotify_refresh_token")?.value ?? null;
 
   if (!accessToken) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
@@ -59,8 +59,9 @@ async function proxyRequest(request: NextRequest) {
     if (response.status === 401 && refreshToken) {
       const tokens = await refreshAccessToken(refreshToken);
       if (tokens.access_token) {
-        accessToken = tokens.access_token;
-        response = await spotifyCall(endpoint, accessToken, request.method, body);
+        const newToken: string = tokens.access_token;
+        accessToken = newToken;
+        response = await spotifyCall(endpoint, newToken, request.method, body);
 
         // Return data with updated cookies
         const data = await parseResponse(response);
@@ -69,7 +70,7 @@ async function proxyRequest(request: NextRequest) {
         }
 
         const res = NextResponse.json(data, { status: response.status });
-        res.cookies.set("spotify_access_token", accessToken, {
+        res.cookies.set("spotify_access_token", newToken, {
           httpOnly: true,
           secure: true,
           sameSite: "lax",

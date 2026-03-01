@@ -3,7 +3,7 @@ export function getSpotifyAuthUrl(): string {
     client_id: process.env.SPOTIFY_CLIENT_ID!,
     response_type: "code",
     redirect_uri: process.env.SPOTIFY_REDIRECT_URI!,
-    scope: "playlist-modify-public playlist-modify-private",
+    scope: "user-read-private user-read-email playlist-modify-public playlist-modify-private",
   });
   return `https://accounts.spotify.com/authorize?${params}`;
 }
