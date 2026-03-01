@@ -1,18 +1,24 @@
-const SPOTIFY_API_BASE = "https://api.spotify.com/v1";
+/**
+ * All Spotify API calls route through /api/spotify/proxy.
+ * The proxy reads the access token from httpOnly cookies server-side.
+ */
 
 export async function spotifyFetch(
   endpoint: string,
-  accessToken: string,
+  _accessToken: string,
   options: RequestInit = {}
 ): Promise<Response> {
-  return fetch(`${SPOTIFY_API_BASE}${endpoint}`, {
-    ...options,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
+  const method = options.method || "GET";
+  const proxyUrl = `/api/spotify/proxy?endpoint=${encodeURIComponent(endpoint)}`;
+
+  const fetchOptions: RequestInit = { method };
+
+  if (method === "POST" && options.body) {
+    fetchOptions.body = options.body;
+    fetchOptions.headers = { "Content-Type": "application/json" };
+  }
+
+  return fetch(proxyUrl, fetchOptions);
 }
 
 export async function searchTracks(
